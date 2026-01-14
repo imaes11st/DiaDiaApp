@@ -4,9 +4,16 @@ import PrimaryButton from "@/components/PrimaryButton";
 import ProfileHeader from "@/components/ProfileHeader";
 import Screen from "@/components/Screen";
 import { ThemedText } from "@/components/themed-text";
+import { useHabits } from "@/context/HabitsContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, ListRenderItemInfo, StyleSheet, TextInput, View } from "react-native";
+import {
+  FlatList,
+  ListRenderItemInfo,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Habit = {
@@ -42,110 +49,109 @@ const INITIAL: Habit[] = [
 ];
 
 export default function HomeScreen() {
+  const { loading, habits, addHabit, toggleHabit } = useHabits();
   const [items, setItems] = useState<Habit[]>(INITIAL);
   const [nuevo, setNuevo] = useState("");
   const insets = useSafeAreaInsets();
 
   const border = useThemeColor({}, "border");
   const surface = useThemeColor({}, "surface");
-  const primary = useThemeColor({}, "primary");
-  const onPrimary = useThemeColor({}, "onPrimary");
   const text = useThemeColor({}, "text");
-  const muted = useThemeColor({}, "muted");
 
-  const toggle = useCallback((id: string) => {
-    setItems((prev) =>
-      prev.map((h) => {
-        if (h.id !== id) return h;
-        const completed = !h.isCompleted;
-        return {
-          ...h,
-          isCompleted: completed,
-          streak: completed ? h.streak + 1 : Math.max(0, h.streak - 1),
-        };
-      })
-    );
-  }, []);
-
-  const addHabit = useCallback(() => {
+  const onAdd = useCallback(() => {
     const title = nuevo.trim();
     if (!title) return;
-    setItems((prev) => [
-      {
-        id: `h${Date.now()}`,
-        title,
-        streak: 0,
-        isCompleted: false,
-        priority: "low",
-      },
-      ...prev,
-    ]);
+    addHabit(title, "low");
     setNuevo("");
-  }, [nuevo]);
+  }, [nuevo, addHabit]);
 
   const total = items.length;
-  const completados = useMemo(
-    () => items.filter((h) => h.isCompleted).length,
-    [items]
-  );
-
-  const habits = [
-    { id: "h1", title: "Beber agua", streak: 3, isCompleted: true },
-    { id: "h2", title: "Leer 10 min", streak: 1, isCompleted: false },
-    { id: "h3", title: "Caminar 15 min", streak: 7, isCompleted: false },
-  ];
+  const completados = useMemo(() => {
+    const today = new Date().toDateString();
+    return habits.filter(
+      (h) => h.lastDoneAt && new Date(h.lastDoneAt).toDateString() === today
+    ).length;
+  }, [habits]);
 
   const keyExtractor = useCallback((item: Habit) => item.id, []);
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<Habit>) => (
-      <HabitCard
-        title={item.title}
-        streak={item.streak}
-        isCompleted={item.isCompleted}
-        priority={item.priority}
-        onToggle={() => toggle(item.id)}
-      />
-    ),
-   [toggle]
+    ({ item }: ListRenderItemInfo<any>) => {
+      const isToday = item.lastDoneAt
+        ? new Date(item.lastDoneAt).toDateString() === new Date().toDateString()
+        : false;
+      return (
+        <HabitCard
+          title={item.title}
+          streak={item.streak}
+          isCompleted={item.isCompleted}
+          priority={item.priority}
+          onToggle={() => toggleHabit(item.id)}
+        />
+      );
+    },
+    [toggleHabit]
   );
 
-  const itemSeparator = useCallback(() => <View style={{ height: 12 }} />, []);
+  const ItemSeparator = () => <View style={{ height: 12 }} />;
+
   const Empty = () => (
-    <ThemedText style={{ color: muted, textAlign: "center", marginTop: 32 }}>
-      No hay habitos. Añade uno nuevo!
-    </ThemedText>
+    <View style={{ paddingVertical: 32, alignItems: "center", gap: 8 }}>
+      <ThemedText>Aún no tienes hábitos. Crea el primero 👇</ThemedText>
+    </View>
   );
+
+  if (loading) {
+    return (
+      <Screen>
+        <ThemedText>Cargando tus hábitos…</ThemedText>
+      </Screen>
+    );
+  }
+
+  const isSameDay = (a: string | number | Date, b: string | number | Date) =>
+    new Date(a).toDateString() === new Date(b).toDateString();
 
   return (
     <Screen>
       <ProfileHeader name="Juan Esteban" role="dev" />
       <HabitGreeting nombre="Ada" />
       <View style={[styles.row, { alignItems: "center" }]}>
+        {/* <Pressable
+          onPress={async () => {
+            try {
+              await AsyncStorage.clear();
+            } catch (e) {
+              console.warn(e);
+            }
+          }}
+          style={{ padding: 12, borderRadius: 8, backgroundColor: "black" }}
+        >
+          <Text style={{ color: "white" }}>Resetear app</Text>
+        </Pressable> */}
         <TextInput
           value={nuevo}
           onChangeText={setNuevo}
           placeholder="Nuevo habito (ej Meditar)"
-          onSubmitEditing={addHabit}
+          onSubmitEditing={onAdd}
           style={[
             styles.input,
             { backgroundColor: surface, borderColor: border, color: text },
           ]}
         />
-        <PrimaryButton title="Añadir" onPress={addHabit}></PrimaryButton>
+        <PrimaryButton title="Añadir" onPress={onAdd}></PrimaryButton>
       </View>
       <FlatList
-        data={items}
-        keyExtractor={keyExtractor}
+        data={habits}
         renderItem={renderItem}
-        ItemSeparatorComponent={itemSeparator}
+        ItemSeparatorComponent={ItemSeparator}
         ListEmptyComponent={Empty}
-        contentContainerStyle={{ 
-          paddingVertical: 16, 
-          paddingBottom: insets.bottom + 16
-         }}
-         initialNumToRender={8}
-         windowSize={10}
-         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingVertical: 16,
+          paddingBottom: insets.bottom + 16,
+        }}
+        initialNumToRender={8}
+        windowSize={10}
+        showsVerticalScrollIndicator={false}
       />
     </Screen>
   );
