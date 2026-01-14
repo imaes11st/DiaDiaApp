@@ -18,12 +18,14 @@ export default function TabTwoScreen() {
         </ThemedText>
         <QuickAddChips onPick={onPick} />
         <ThemedText>Tus Selecciones</ThemedText>
+
         <FlatList 
         data={picked} 
         keyExtractor={(t) => t} 
         renderItem={({ item }) => <ThemedText>{item}</ThemedText>}
         ListEmptyComponent={<ThemedText>Toca un chip para añadir</ThemedText>}
-        />        
+        />  
+              
       </View>
     </Screen>
   );

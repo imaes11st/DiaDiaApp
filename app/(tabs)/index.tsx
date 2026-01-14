@@ -3,9 +3,11 @@ import HabitGreeting from "@/components/HabitGreeting";
 import PrimaryButton from "@/components/PrimaryButton";
 import ProfileHeader from "@/components/ProfileHeader";
 import Screen from "@/components/Screen";
+import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { FlatList, ListRenderItemInfo, StyleSheet, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Habit = {
   id: string;
@@ -42,6 +44,7 @@ const INITIAL: Habit[] = [
 export default function HomeScreen() {
   const [items, setItems] = useState<Habit[]>(INITIAL);
   const [nuevo, setNuevo] = useState("");
+  const insets = useSafeAreaInsets();
 
   const border = useThemeColor({}, "border");
   const surface = useThemeColor({}, "surface");
@@ -92,6 +95,27 @@ export default function HomeScreen() {
     { id: "h3", title: "Caminar 15 min", streak: 7, isCompleted: false },
   ];
 
+  const keyExtractor = useCallback((item: Habit) => item.id, []);
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<Habit>) => (
+      <HabitCard
+        title={item.title}
+        streak={item.streak}
+        isCompleted={item.isCompleted}
+        priority={item.priority}
+        onToggle={() => toggle(item.id)}
+      />
+    ),
+   [toggle]
+  );
+
+  const itemSeparator = useCallback(() => <View style={{ height: 12 }} />, []);
+  const Empty = () => (
+    <ThemedText style={{ color: muted, textAlign: "center", marginTop: 32 }}>
+      No hay habitos. Añade uno nuevo!
+    </ThemedText>
+  );
+
   return (
     <Screen>
       <ProfileHeader name="Juan Esteban" role="dev" />
@@ -109,21 +133,20 @@ export default function HomeScreen() {
         />
         <PrimaryButton title="Añadir" onPress={addHabit}></PrimaryButton>
       </View>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32, gap: 16 }}
-      >
-        {items.map((h) => (
-          <HabitCard
-            key={h.id}
-            title={h.title}
-            streak={h.streak}
-            isCompleted={h.isCompleted}
-            priority={h.priority}
-            onToggle={() => toggle(h.id)}
-          />
-        ))}
-      </ScrollView>
+      <FlatList
+        data={items}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ItemSeparatorComponent={itemSeparator}
+        ListEmptyComponent={Empty}
+        contentContainerStyle={{ 
+          paddingVertical: 16, 
+          paddingBottom: insets.bottom + 16
+         }}
+         initialNumToRender={8}
+         windowSize={10}
+         showsVerticalScrollIndicator={false}
+      />
     </Screen>
   );
 }
