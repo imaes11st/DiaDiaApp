@@ -1,31 +1,25 @@
-import { FlatList, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from "react-native";
 
-import QuickAddChips from '@/components/QuickAddChips';
-import Screen from '@/components/Screen';
-import { ThemedText } from '@/components/themed-text';
-import { useState } from 'react';
+import QuickAddChips from "@/components/QuickAddChips";
+import Screen from "@/components/Screen";
+import { ThemedText } from "@/components/themed-text";
+import { useHabits } from "@/context/HabitsContext";
 
 export default function TabTwoScreen() {
-    const [picked, setPicked] = useState<string[]>([]);
-    const onPick = (t: string) => 
-        setPicked((prev) => (prev.includes(t) ? prev : [...prev, t]));
+  const { addHabit } = useHabits();
+  const onPick = (t: string) => addHabit(t, "low");
 
   return (
     <Screen>
       <View>
         <ThemedText style={{ fontWeight: "700", fontSize: 18 }}>
-          Sugerencias rapidas
+          Sugerencias rápidas
         </ThemedText>
-        <QuickAddChips onPick={onPick} />
-        <ThemedText>Tus Selecciones</ThemedText>
+        <ThemedText>
+          Desliza los chips y toca para crear el hábito al instante.
+        </ThemedText>
 
-        <FlatList 
-        data={picked} 
-        keyExtractor={(t) => t} 
-        renderItem={({ item }) => <ThemedText>{item}</ThemedText>}
-        ListEmptyComponent={<ThemedText>Toca un chip para añadir</ThemedText>}
-        />  
-              
+        <QuickAddChips onPick={onPick} />
       </View>
     </Screen>
   );
@@ -33,13 +27,13 @@ export default function TabTwoScreen() {
 
 const styles = StyleSheet.create({
   headerImage: {
-    color: '#808080',
+    color: "#808080",
     bottom: -90,
     left: -35,
-    position: 'absolute',
+    position: "absolute",
   },
   titleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
 });

@@ -4,6 +4,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import ProfileHeader from "@/components/ProfileHeader";
 import Screen from "@/components/Screen";
 import { ThemedText } from "@/components/themed-text";
+import { useCelebration } from "@/context/CelebrationProvider";
 import { useHabits } from "@/context/HabitsContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCallback, useMemo, useState } from "react";
@@ -48,11 +49,15 @@ const INITIAL: Habit[] = [
   },
 ];
 
+type HabitItem = ReturnType<typeof useHabits>["habits"][number];
+
 export default function HomeScreen() {
   const { loading, habits, addHabit, toggleHabit } = useHabits();
   const [items, setItems] = useState<Habit[]>(INITIAL);
   const [nuevo, setNuevo] = useState("");
   const insets = useSafeAreaInsets();
+
+  const  { celebrate } = useCelebration();
 
   const border = useThemeColor({}, "border");
   const surface = useThemeColor({}, "surface");
@@ -73,9 +78,18 @@ export default function HomeScreen() {
     ).length;
   }, [habits]);
 
+  async function onToggleWhitCelebration(item: HabitItem) {
+    const wasToday = item.lastDoneAt ?
+    isSameDay(item.lastDoneAt, Date.now()) : false;
+    toggleHabit(item.id);
+    if (!wasToday) {
+      const msg = `¡Has completado "${item.title}"! 🎉`;
+      celebrate(msg);
+    }
+  }
+
   const keyExtractor = useCallback((item: Habit) => item.id, []);
-  const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<any>) => {
+  const renderItem = ({ item }: ListRenderItemInfo<HabitItem>) => {
       const isToday = item.lastDoneAt
         ? new Date(item.lastDoneAt).toDateString() === new Date().toDateString()
         : false;
@@ -83,14 +97,12 @@ export default function HomeScreen() {
         <HabitCard
           title={item.title}
           streak={item.streak}
-          isCompleted={item.isCompleted}
+          isCompleted={isToday}
           priority={item.priority}
-          onToggle={() => toggleHabit(item.id)}
+          onToggle={() => onToggleWhitCelebration(item)}
         />
       );
-    },
-    [toggleHabit]
-  );
+    };
 
   const ItemSeparator = () => <View style={{ height: 12 }} />;
 
