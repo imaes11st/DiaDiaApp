@@ -1,11 +1,11 @@
 import HabitCard from "@/components/HabitCard";
 import HabitGreeting from "@/components/HabitGreeting";
+import PrimaryButton from "@/components/PrimaryButton";
 import ProfileHeader from "@/components/ProfileHeader";
 import Screen from "@/components/Screen";
-import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 type Habit = {
   id: string;
@@ -94,7 +94,7 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <ProfileHeader name="Juan Esteban " role="dev" />
+      <ProfileHeader name="Juan Esteban" role="dev" />
       <HabitGreeting nombre="Ada" />
       <View style={[styles.row, { alignItems: "center" }]}>
         <TextInput
@@ -107,14 +107,12 @@ export default function HomeScreen() {
             { backgroundColor: surface, borderColor: border, color: text },
           ]}
         />
-        <Pressable
-          onPress={addHabit}
-          style={[styles.addBtn, { backgroundColor: primary }]}
-        >
-          <ThemedText>Añadir</ThemedText>
-        </Pressable>
+        <PrimaryButton title="Añadir" onPress={addHabit}></PrimaryButton>
       </View>
-      <View style={{ gap: 12 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32, gap: 16 }}
+      >
         {items.map((h) => (
           <HabitCard
             key={h.id}
@@ -125,7 +123,7 @@ export default function HomeScreen() {
             onToggle={() => toggle(h.id)}
           />
         ))}
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
