@@ -2,8 +2,10 @@ import HabitCard from "@/components/HabitCard";
 import HabitGreeting from "@/components/HabitGreeting";
 import ProfileHeader from "@/components/ProfileHeader";
 import Screen from "@/components/Screen";
-import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ThemedText } from "@/components/themed-text";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 type Habit = {
   id: string;
@@ -39,16 +41,50 @@ const INITIAL: Habit[] = [
 
 export default function HomeScreen() {
   const [items, setItems] = useState<Habit[]>(INITIAL);
-  const [nuevo, setNuevo] = useState();
+  const [nuevo, setNuevo] = useState("");
 
-  const nombre = "Juan Esteban";
-  const edad = 26;
-  const isPremium = true;
-  const messages = 5;
-  const fecha = new Date();
-  const hora = fecha.getHours();
-  const saludo =
-    hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const border = useThemeColor({}, "border");
+  const surface = useThemeColor({}, "surface");
+  const primary = useThemeColor({}, "primary");
+  const onPrimary = useThemeColor({}, "onPrimary");
+  const text = useThemeColor({}, "text");
+  const muted = useThemeColor({}, "muted");
+
+  const toggle = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((h) => {
+        if (h.id !== id) return h;
+        const completed = !h.isCompleted;
+        return {
+          ...h,
+          isCompleted: completed,
+          streak: completed ? h.streak + 1 : Math.max(0, h.streak - 1),
+        };
+      })
+    );
+  }, []);
+
+  const addHabit = useCallback(() => {
+    const title = nuevo.trim();
+    if (!title) return;
+    setItems((prev) => [
+      {
+        id: `h${Date.now()}`,
+        title,
+        streak: 0,
+        isCompleted: false,
+        priority: "low",
+      },
+      ...prev,
+    ]);
+    setNuevo("");
+  }, [nuevo]);
+
+  const total = items.length;
+  const completados = useMemo(
+    () => items.filter((h) => h.isCompleted).length,
+    [items]
+  );
 
   const habits = [
     { id: "h1", title: "Beber agua", streak: 3, isCompleted: true },
@@ -58,15 +94,35 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <ProfileHeader name="Juan Esteban" role="dev" />
+      <ProfileHeader name="Juan Esteban " role="dev" />
       <HabitGreeting nombre="Ada" />
+      <View style={[styles.row, { alignItems: "center" }]}>
+        <TextInput
+          value={nuevo}
+          onChangeText={setNuevo}
+          placeholder="Nuevo habito (ej Meditar)"
+          onSubmitEditing={addHabit}
+          style={[
+            styles.input,
+            { backgroundColor: surface, borderColor: border, color: text },
+          ]}
+        />
+        <Pressable
+          onPress={addHabit}
+          style={[styles.addBtn, { backgroundColor: primary }]}
+        >
+          <ThemedText>Añadir</ThemedText>
+        </Pressable>
+      </View>
       <View style={{ gap: 12 }}>
-        {habits.map((h) => (
+        {items.map((h) => (
           <HabitCard
             key={h.id}
             title={h.title}
             streak={h.streak}
             isCompleted={h.isCompleted}
+            priority={h.priority}
+            onToggle={() => toggle(h.id)}
           />
         ))}
       </View>
@@ -107,5 +163,20 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: "#334155",
+  },
+  row: { flexDirection: "row", gap: 8 },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  addBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
