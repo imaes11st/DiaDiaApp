@@ -111,8 +111,8 @@ export async function suggestViaAI(
     });
     if (!res.ok) throw new Error("AI endpoint error");
     return (await res.json()) as Suggestion[];
-  } catch (error) {
-    console.warn("AI fallback:", error);
+    } catch (e) {
+    console.warn("AI fallback:", e);
     return suggestFor(category);
   }
 }
