@@ -1,9 +1,12 @@
+import Badges from "@/components/Badges";
 import HabitCard from "@/components/HabitCard";
 import HabitGreeting from "@/components/HabitGreeting";
 import PrimaryButton from "@/components/PrimaryButton";
 import ProfileHeader from "@/components/ProfileHeader";
+import ProgressStats from "@/components/ProgressStats";
 import Screen from "@/components/Screen";
 import { ThemedText } from "@/components/themed-text";
+import WeeklyCalendar from "@/components/WeeklyCalendar";
 import { useCelebration } from "@/context/CelebrationProvider";
 import { useHabits } from "@/context/HabitsContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
@@ -11,6 +14,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   ListRenderItemInfo,
+  Share,
   StyleSheet,
   TextInput,
   View,
@@ -62,6 +66,7 @@ export default function HomeScreen() {
   const border = useThemeColor({}, "border");
   const surface = useThemeColor({}, "surface");
   const text = useThemeColor({}, "text");
+  const muted = useThemeColor({}, "muted");
 
   const onAdd = useCallback(() => {
     const title = nuevo.trim();
@@ -77,6 +82,11 @@ export default function HomeScreen() {
       (h) => h.lastDoneAt && new Date(h.lastDoneAt).toDateString() === today
     ).length;
   }, [habits]);
+
+  const shareProgress = useCallback(async () => {
+    const message = `He completado ${completados} hábitos hoy en DiaDiaApp! ¿Te animas a unirte?`;
+    await Share.share({ message });
+  }, [completados]);
 
   async function onToggleWhitCelebration(item: HabitItem) {
     const wasToday = item.lastDoneAt ?
@@ -127,6 +137,9 @@ export default function HomeScreen() {
     <Screen>
       <ProfileHeader name="Juan Esteban" role="dev" />
       <HabitGreeting nombre="Ada" />
+      <ProgressStats />
+      <WeeklyCalendar />
+      <Badges />
       <View style={[styles.row, { alignItems: "center" }]}>
         {/* <Pressable
           onPress={async () => {
@@ -149,8 +162,12 @@ export default function HomeScreen() {
             styles.input,
             { backgroundColor: surface, borderColor: border, color: text },
           ]}
+          placeholderTextColor={muted}
         />
         <PrimaryButton title="Añadir" onPress={onAdd}></PrimaryButton>
+      </View>
+      <View style={[styles.row, { alignItems: "center" }]}>
+        <PrimaryButton title="Compartir Progreso" onPress={shareProgress}></PrimaryButton>
       </View>
       <FlatList
         data={habits}
