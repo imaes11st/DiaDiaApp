@@ -30,8 +30,5 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F8FAFC",
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 16,
   },
 });

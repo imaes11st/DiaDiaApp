@@ -38,10 +38,10 @@ export default function Badges() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 0,
     backgroundColor: "#fff3cd",
-    borderRadius: 12,
+    borderRadius: 8,
   },
   title: {
     fontSize: 18,

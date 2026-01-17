@@ -14,6 +14,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   ListRenderItemInfo,
+  ScrollView,
   Share,
   StyleSheet,
   TextInput,
@@ -135,53 +136,72 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <ProfileHeader name="Juan Esteban" role="dev" />
-      <HabitGreeting nombre="Ada" />
-      <ProgressStats />
-      <WeeklyCalendar />
-      <Badges />
-      <View style={[styles.row, { alignItems: "center" }]}>
-        {/* <Pressable
-          onPress={async () => {
-            try {
-              await AsyncStorage.clear();
-            } catch (e) {
-              console.warn(e);
-            }
-          }}
-          style={{ padding: 12, borderRadius: 8, backgroundColor: "black" }}
-        >
-          <Text style={{ color: "white" }}>Resetear app</Text>
-        </Pressable> */}
-        <TextInput
-          value={nuevo}
-          onChangeText={setNuevo}
-          placeholder="Nuevo habito (ej Meditar)"
-          onSubmitEditing={onAdd}
-          style={[
-            styles.input,
-            { backgroundColor: surface, borderColor: border, color: text },
-          ]}
-          placeholderTextColor={muted}
-        />
-        <PrimaryButton title="Añadir" onPress={onAdd}></PrimaryButton>
-      </View>
-      <View style={[styles.row, { alignItems: "center" }]}>
-        <PrimaryButton title="Compartir Progreso" onPress={shareProgress}></PrimaryButton>
-      </View>
-      <FlatList
-        data={habits}
-        renderItem={renderItem}
-        ItemSeparatorComponent={ItemSeparator}
-        ListEmptyComponent={Empty}
-        contentContainerStyle={{
-          paddingVertical: 16,
-          paddingBottom: insets.bottom + 16,
-        }}
-        initialNumToRender={8}
-        windowSize={10}
-        showsVerticalScrollIndicator={false}
-      />
+      <ScrollView contentContainerStyle={{ gap: 16 }}>
+        <ProfileHeader name="Juan Esteban" role="dev" />
+        <HabitGreeting nombre="Ada" />
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Mis Hábitos</ThemedText>
+          <FlatList
+            data={habits}
+            renderItem={renderItem}
+            ItemSeparatorComponent={ItemSeparator}
+            ListEmptyComponent={Empty}
+            contentContainerStyle={{
+              paddingVertical: 16,
+              paddingBottom: insets.bottom + 16,
+            }}
+            initialNumToRender={8}
+            windowSize={10}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+          />
+        </View>
+
+        <View style={styles.separator} />
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Progreso</ThemedText>
+          <ProgressStats />
+        </View>
+
+        <View style={styles.separator} />
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Calendario Semanal</ThemedText>
+          <WeeklyCalendar />
+        </View>
+
+        <View style={styles.separator} />
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Logros</ThemedText>
+          <Badges />
+        </View>
+
+        <View style={styles.separator} />
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Añadir Nuevo Hábito</ThemedText>
+          <View style={[styles.row, { alignItems: "center" }]}>
+            <TextInput
+              value={nuevo}
+              onChangeText={setNuevo}
+              placeholder="Nuevo habito (ej Meditar)"
+              onSubmitEditing={onAdd}
+              style={[
+                styles.input,
+                { backgroundColor: surface, borderColor: border, color: text },
+              ]}
+              placeholderTextColor={muted}
+            />
+            <PrimaryButton title="Añadir" onPress={onAdd}></PrimaryButton>
+          </View>
+          <View style={[styles.row, { alignItems: "center" }]}>
+            <PrimaryButton title="Compartir Progreso" onPress={shareProgress}></PrimaryButton>
+          </View>
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -234,5 +254,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  section: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#0F172A",
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 8,
   },
 });

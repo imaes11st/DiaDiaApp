@@ -1,7 +1,6 @@
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { ThemedText } from "./themed-text";
-
 type Props = {
   title: string;
   streak: number;
@@ -38,13 +37,11 @@ export default function HabitCard({
 
   const p = priorityStyles[priority];
   return (
-    <Pressable
-      onPress={onToggle}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         {
           backgroundColor: surface,
-          opacity: pressed ? 0.96 : 1,
           borderColor: isCompleted ? success : border,
         },
       ]}
@@ -66,7 +63,12 @@ export default function HabitCard({
         </ThemedText>
         {isCompleted && <ThemedText style={styles.badge}>✔︎ Hoy</ThemedText>}
       </View>
-    </Pressable>
+      <TouchableOpacity onPress={onToggle} style={[styles.button, { backgroundColor: isCompleted ? success : "#4caf50" }]}>
+        <ThemedText style={styles.buttonText}>
+          {isCompleted ? "✔ Completado" : "Marcar"}
+        </ThemedText>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -74,13 +76,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     gap: 6,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    borderWidth: 1,
   },
   cardDone: { borderWidth: 1, borderColor: "#22C55E" },
   row: {
@@ -88,7 +91,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  title: { fontSize: 16, fontWeight: "600", color: "#0F172A" },
-  badge: { fontSize: 12, color: "#16A34A" },
-  streak: { fontSize: 12, color: "#475569" },
+  title: { fontSize: 14, fontWeight: "600", color: "#0F172A" },
+  badge: { fontSize: 10, color: "#16A34A" },
+  streak: { fontSize: 10, color: "#475569" },
+  button: {
+    marginTop: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
 });

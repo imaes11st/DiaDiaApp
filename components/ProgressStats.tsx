@@ -34,26 +34,21 @@ export default function ProgressStats() {
   }, [habits]);
 
   const chartData = useMemo(() => {
-    console.log('Habits:', habits);
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const data = days.map((day, index) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - index)); // Últimos 7 días
       const dateString = date.toDateString();
-      console.log(`Day ${day}: ${dateString}`);
-      const completedHabits = habits.filter(h => {
-        if (!h.lastDoneAt) return false;
-        const habitDate = new Date(h.lastDoneAt).toDateString();
-        console.log(`Habit ${h.title} lastDoneAt: ${habitDate}`);
-        return habitDate === dateString;
-      });
+      const completedHabits = habits.filter(h =>
+        h.lastDoneAt && new Date(h.lastDoneAt).toDateString() === dateString
+      );
       return {
         day,
         count: completedHabits.length,
         habits: completedHabits.map(h => h.title),
       };
     });
-    console.log('Chart data:', data);
+
     return data;
   }, [habits]);
 
@@ -130,10 +125,10 @@ export default function ProgressStats() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
+    padding: 12,
+    marginBottom: 0,
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
   },
   title: {
     fontSize: 18,

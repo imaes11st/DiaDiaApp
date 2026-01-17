@@ -51,10 +51,10 @@ export default function WeeklyCalendar() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
+    padding: 12,
+    marginBottom: 0,
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
   },
   title: {
     fontSize: 18,
