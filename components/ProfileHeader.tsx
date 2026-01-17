@@ -1,13 +1,16 @@
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native/";
 import { ThemedText } from "./themed-text";
 
 export default function ProfileHeader({
   name,
   role,
+  avatarUri,
 }: {
   name: string;
   role: string;
+  avatarUri?: string | null;
 }) {
   const card = useThemeColor({}, "surface");
   const primary = useThemeColor({}, "primary");
@@ -22,7 +25,11 @@ export default function ProfileHeader({
   return (
     <View style={[styles.card, { backgroundColor: card }]}>
       <View style={[styles.avatar, { backgroundColor: primary }]}>
-        <ThemedText style={styles.avatarTxt}>{initials}</ThemedText>
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+        ) : (
+          <ThemedText style={styles.avatarTxt}>{initials}</ThemedText>
+        )}
       </View>
       <View style={{ gap: 4 }}>
         <ThemedText style={styles.name}>{name}</ThemedText>
@@ -46,6 +53,11 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   avatarTxt: { fontWeight: "700", fontSize: 18, color: "#fff" },
   name: { fontSize: 18, fontWeight: "700" },

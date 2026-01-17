@@ -2,23 +2,26 @@ import Avatar from "@/components/Avatar";
 import PrimaryButton from "@/components/PrimaryButton";
 import Screen from "@/components/Screen";
 import { ThemedText } from "@/components/themed-text";
+import { useHabits } from "@/context/HabitsContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { generateAvatarAI } from "@/services/avatar";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from "react-native";
 
 export default function Profile() {
   const { loading, profile, updateProfile, setAvatar } = useProfile();
+  const { habits } = useHabits();
   const surface = useThemeColor({}, "surface");
   const border = useThemeColor({}, "border");
   const text = useThemeColor({}, "text");
@@ -27,11 +30,20 @@ export default function Profile() {
   const [name, setName] = useState(profile.name);
   const [role, setRole] = useState(profile.role);
   const [busy, setBusy] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false); // Placeholder
 
   useEffect(() => {
     setName(profile.name);
     setRole(profile.role);
   }, [profile.name, profile.role]);
+
+  const stats = useMemo(() => {
+    const totalHabits = habits.length;
+    const maxStreak = Math.max(...habits.map(h => h.streak), 0);
+    const totalCompleted = habits.reduce((sum, h) => sum + h.streak, 0);
+    const weeklyCompleted = habits.filter(h => h.lastDoneAt && new Date(h.lastDoneAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
+    return { totalHabits, maxStreak, totalCompleted, weeklyCompleted };
+  }, [habits]);
 
   async function save() {
     setBusy(true);
@@ -83,55 +95,84 @@ export default function Profile() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <Avatar
-              name={name}
-              uri={profile.avatarUri}
-              onPress={pickFromGallery}
-            />
-            <ThemedText>Toca el avatar para elegir desde galería</ThemedText>
-          </View>
-          <View style={{ gap: 12 }}>
-            <ThemedText style={{ fontWeight: "700" }}>Nombre</ThemedText>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Tu nombre"
-              placeholderTextColor={muted}
-              style={[
-                styles.input,
-                { backgroundColor: surface, borderColor: border, color: text },
-              ]}
-              returnKeyType="next"
-            />
-
-            <ThemedText style={{ fontWeight: "700" }}>Profesión</ThemedText>
-            <TextInput
-              value={role}
-              onChangeText={setRole}
-              placeholder="Tu profesión"
-              placeholderTextColor={muted}
-              style={[
-                styles.input,
-                { backgroundColor: surface, borderColor: border, color: text },
-              ]}
-              returnKeyType="done"
-              onSubmitEditing={save}
-            />
-
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              <PrimaryButton title="Tomar foto" onPress={takePhoto} />
-              <PrimaryButton title="Elegir" onPress={pickFromGallery} />
+          {/* Sección Perfil */}
+          <View style={[styles.section, { backgroundColor: surface }]}>
+            <ThemedText style={styles.sectionTitle}>Mi Perfil</ThemedText>
+            <View style={{ alignItems: "center", gap: 12 }}>
+              <Avatar
+                name={name}
+                uri={profile.avatarUri}
+                onPress={pickFromGallery}
+              />
+              <ThemedText style={{ color: muted }}>Toca para cambiar avatar</ThemedText>
             </View>
-            <PrimaryButton
-              title="Generar con IA"
-              onPress={makeAI}
-              disabled={busy}
-            />
-            <PrimaryButton title="Guardar" onPress={save} disabled={busy} />
+            <View style={{ gap: 12 }}>
+              <View>
+                <ThemedText style={styles.label}>Nombre</ThemedText>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Tu nombre"
+                  placeholderTextColor={muted}
+                  style={[
+                    styles.input,
+                    { backgroundColor: surface, borderColor: border, color: text },
+                  ]}
+                  returnKeyType="next"
+                />
+              </View>
+              <View>
+                <ThemedText style={styles.label}>Profesión</ThemedText>
+                <TextInput
+                  value={role}
+                  onChangeText={setRole}
+                  placeholder="Tu profesión"
+                  placeholderTextColor={muted}
+                  style={[
+                    styles.input,
+                    { backgroundColor: surface, borderColor: border, color: text },
+                  ]}
+                  returnKeyType="done"
+                />
+              </View>
+              <PrimaryButton title="Guardar Cambios" onPress={save} disabled={busy} />
+            </View>
+          </View>
+
+          {/* Sección Estadísticas */}
+          <View style={[styles.section, { backgroundColor: surface }]}>
+            <ThemedText style={styles.sectionTitle}>Mis Estadísticas</ThemedText>
+            <View style={styles.statsGrid}>
+              <View style={styles.stat}>
+                <ThemedText style={styles.statNumber}>{stats.totalHabits}</ThemedText>
+                <ThemedText style={styles.statLabel}>Hábitos Totales</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <ThemedText style={styles.statNumber}>{stats.maxStreak}</ThemedText>
+                <ThemedText style={styles.statLabel}>Racha Máxima</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <ThemedText style={styles.statNumber}>{stats.totalCompleted}</ThemedText>
+                <ThemedText style={styles.statLabel}>Completados Totales</ThemedText>
+              </View>
+              <View style={styles.stat}>
+                <ThemedText style={styles.statNumber}>{stats.weeklyCompleted}</ThemedText>
+                <ThemedText style={styles.statLabel}>Esta Semana</ThemedText>
+              </View>
+            </View>
+          </View>
+
+          {/* Sección Configuración */}
+          <View style={[styles.section, { backgroundColor: surface }]}>
+            <ThemedText style={styles.sectionTitle}>Configuración</ThemedText>
+            <View style={styles.setting}>
+              <ThemedText>Notificaciones</ThemedText>
+              <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+            </View>
+            <PrimaryButton title="Generar Avatar IA" onPress={makeAI} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -140,43 +181,51 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  section: {
+    padding: 16,
+    borderRadius: 12,
+    marginHorizontal: 16,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-  },
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F2F6FF",
-    padding: 24,
-    gap: 8,
-  },
-  title: {
-    fontSize: 22,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#334155",
+  label: {
+    fontWeight: "600",
+    marginBottom: 4,
   },
   input: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  stat: {
+    flex: 1,
+    minWidth: 80,
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: "center",
+  },
+  setting: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
   },
 });

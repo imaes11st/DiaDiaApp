@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/themed-text";
 import WeeklyCalendar from "@/components/WeeklyCalendar";
 import { useCelebration } from "@/context/CelebrationProvider";
 import { useHabits } from "@/context/HabitsContext";
+import { useProfile } from "@/context/ProfileContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -58,6 +59,7 @@ type HabitItem = ReturnType<typeof useHabits>["habits"][number];
 
 export default function HomeScreen() {
   const { loading, habits, addHabit, toggleHabit } = useHabits();
+  const { profile } = useProfile();
   const [items, setItems] = useState<Habit[]>(INITIAL);
   const [nuevo, setNuevo] = useState("");
   const insets = useSafeAreaInsets();
@@ -137,8 +139,8 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ gap: 16 }}>
-        <ProfileHeader name="Juan Esteban" role="dev" />
-        <HabitGreeting nombre="Ada" />
+        <ProfileHeader name={profile.name} role={profile.role} avatarUri={profile.avatarUri} />
+        <HabitGreeting nombre={profile.name} />
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Mis Hábitos</ThemedText>
