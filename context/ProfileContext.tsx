@@ -1,4 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { db } from "@/config/firebase";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import {
     createContext,
     useCallback,
@@ -7,8 +8,7 @@ import {
     useMemo,
     useState,
 } from "react";
-
-const STORE_KEY = "profile:v1";
+import { useAuth } from "./AuthContext";
 
 export type Profile = {
   name: string;
@@ -39,43 +39,70 @@ const ProfileContext = createContext<Ctx>({
 export const useProfile = () => useContext(ProfileContext);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile>(defaultProfile);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORE_KEY);
-        if (raw) setProfile(JSON.parse(raw));
-      } catch (error) {
-        console.warn("Profile load error", error);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const persist = useCallback(async (p: Profile) => {
-    setProfile(p);
-    try {
-      await AsyncStorage.setItem(STORE_KEY, JSON.stringify(p));
-    } catch (e) {
-      console.warn("Profile save error", e);
+    if (!isAuthenticated || !user) {
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    // Escuchar cambios en tiempo real en el perfil
+    const profileRef = doc(db, "profiles", user.uid);
+    const unsubscribe = onSnapshot(profileRef, (doc) => {
+      if (doc.exists()) {
+        const profileData = doc.data() as Profile;
+        setProfile(profileData);
+      } else {
+        // Si no existe perfil, crear uno por defecto
+        setProfile(defaultProfile);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error loading profile:", error);
+      setProfile(defaultProfile);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [user, isAuthenticated]);
 
   const updateProfile = useCallback(
     async (patch: Partial<Profile>) => {
-      await persist({ ...profile, ...patch });
+      if (!user) return;
+
+      try {
+        const updatedProfile = { ...profile, ...patch };
+        setProfile(updatedProfile);
+
+        // Guardar en Firestore
+        await setDoc(doc(db, "profiles", user.uid), updatedProfile, { merge: true });
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
     },
-    [profile, persist]
+    [profile, user]
   );
 
   const setAvatar = useCallback(
     async (uri: string | null) => {
-      await persist({ ...profile, avatarUri: uri });
+      if (!user) return;
+
+      try {
+        const updatedProfile = { ...profile, avatarUri: uri };
+        setProfile(updatedProfile);
+
+        // Guardar en Firestore
+        await setDoc(doc(db, "profiles", user.uid), updatedProfile, { merge: true });
+      } catch (error) {
+        console.error("Error setting avatar:", error);
+        throw error;
+      }
     },
-    [profile, persist]
+    [profile, user]
   );
 
   const value = useMemo(

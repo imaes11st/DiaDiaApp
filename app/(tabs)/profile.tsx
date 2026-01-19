@@ -2,11 +2,13 @@ import Avatar from "@/components/Avatar";
 import PrimaryButton from "@/components/PrimaryButton";
 import Screen from "@/components/Screen";
 import { ThemedText } from "@/components/themed-text";
+import { useAuth } from "@/context/AuthContext";
 import { useHabits } from "@/context/HabitsContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { generateAvatarAI } from "@/services/avatar";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -20,6 +22,8 @@ import {
 } from "react-native";
 
 export default function Profile() {
+  const { logout, user } = useAuth();
+  const router = useRouter();
   const { loading, profile, updateProfile, setAvatar } = useProfile();
   const { habits } = useHabits();
   const surface = useThemeColor({}, "surface");
@@ -53,6 +57,24 @@ export default function Profile() {
     });
     setBusy(false);
     Alert.alert("Perfil", "Datos guardados");
+  }
+
+  async function handleLogout() {
+    Alert.alert(
+      "Cerrar Sesión",
+      "¿Estás seguro de que quieres cerrar sesión?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cerrar Sesión",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace("/login");
+          },
+        },
+      ]
+    );
   }
 
   async function pickFromGallery() {
@@ -173,6 +195,13 @@ export default function Profile() {
               <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
             </View>
             <PrimaryButton title="Generar Avatar IA" onPress={makeAI} />
+            <View style={{ marginTop: 16 }}>
+              <PrimaryButton
+                title="Cerrar Sesión"
+                onPress={handleLogout}
+                style={{ backgroundColor: '#ef4444' }}
+              />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -7,4 +7,5 @@ export type Habit = {
   createdAt: string; // ISO date string
   lastDoneAt: string | null; // ISO date string or null
   streak: number;
+  userId: string; // Firebase user ID
 };

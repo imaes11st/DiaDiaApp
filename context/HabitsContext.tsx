@@ -1,15 +1,26 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { db } from "@/config/firebase";
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    updateDoc,
+    where,
+} from "firebase/firestore";
 import {
     createContext,
     useCallback,
     useContext,
     useEffect,
     useMemo,
-    useReducer,
-    useRef,
+    useReducer
 } from "react";
 import { Habit, Priority } from "../types/habit";
 import { isSameDay, isYesterday, toISO } from "../utils/date";
+import { useAuth } from "./AuthContext";
 
 // --- Estado y acciones ---
 type State = {
@@ -19,10 +30,9 @@ type State = {
 
 type Action =
   | { type: "HYDRATE"; payload: Habit[] }
-  | { type: "ADD"; title: string; priority?: Priority }
-  | { type: "TOGGLE"; id: string; today: Date };
-
-const STORAGE_KEY = "habits:v1";
+  | { type: "ADD"; payload: Habit }
+  | { type: "UPDATE"; payload: Habit }
+  | { type: "DELETE"; payload: string };
 
 const initialState: State = { loading: true, habits: [] };
 
@@ -30,52 +40,15 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "HYDRATE":
       return { loading: false, habits: action.payload };
-    case "ADD": {
-      const now = new Date();
-      const newHabit: Habit = {
-        id: `h${Date.now()}`,
-        title: action.title,
-        priority: action.priority ?? "low",
-        createdAt: toISO(now),
-        lastDoneAt: null,
-        streak: 0,
+    case "ADD":
+      return { ...state, habits: [action.payload, ...state.habits] };
+    case "UPDATE":
+      return {
+        ...state,
+        habits: state.habits.map(h => h.id === action.payload.id ? action.payload : h)
       };
-      return { ...state, habits: [newHabit, ...state.habits] };
-    }
-    case "TOGGLE": {
-      const { id, today } = action;
-      const todayISO = toISO(today);
-      const updated = state.habits.map((h) => {
-        if (h.id !== id) return h;
-
-        const last = h.lastDoneAt ? new Date(h.lastDoneAt) : null;
-        const yaHechoHoy = last ? isSameDay(today, last) : false;
-
-        // Si estaba marcado HOY → desmarcar: restar 1 (mín 0) y limpiar lastDoneAt
-        if (yaHechoHoy) {
-          return {
-            ...h,
-            streak: Math.max(0, h.streak - 1),
-            lastDoneAt: null,
-          };
-        }
-
-        // Si NO estaba marcado hoy → marcar
-        let newStreak = 1;
-        if (last && isYesterday(today, last)) {
-          newStreak = h.streak + 1; // venías de ayer → cadena continúa
-        } else {
-          newStreak = 1; // reinicia (hoy es el primer día)
-        }
-
-        return {
-          ...h,
-          streak: newStreak,
-          lastDoneAt: todayISO,
-        };
-      });
-      return { ...state, habits: updated };
-    }
+    case "DELETE":
+      return { ...state, habits: state.habits.filter(h => h.id !== action.payload) };
     default:
       return state;
   }
@@ -84,59 +57,128 @@ function reducer(state: State, action: Action): State {
 type HabitsCtx = {
   loading: boolean;
   habits: Habit[];
-  addHabit: (title: string, priority?: Priority) => void;
-  toggleHabit: (id: string) => void;
+  addHabit: (title: string, priority?: Priority) => Promise<void>;
+  toggleHabit: (id: string) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
 };
 
 const HabitsContext = createContext<HabitsCtx | null>(null);
 
 export function HabitsProvider({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Cargar del storage al montar
+  // Cargar hábitos desde Firestore cuando el usuario cambia
   useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed: Habit[] = JSON.parse(raw);
-          dispatch({ type: "HYDRATE", payload: parsed });
+    if (!isAuthenticated || !user) {
+      dispatch({ type: "HYDRATE", payload: [] });
+      return;
+    }
+
+    // Escuchar cambios en tiempo real en Firestore
+    const q = query(
+      collection(db, "habits"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const habits: Habit[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Habit[];
+
+      dispatch({ type: "HYDRATE", payload: habits });
+    }, (error) => {
+      console.error("Error loading habits:", error);
+      dispatch({ type: "HYDRATE", payload: [] });
+    });
+
+    return unsubscribe;
+  }, [user, isAuthenticated]);
+
+  const addHabit = useCallback(async (title: string, priority?: Priority) => {
+    if (!user) return;
+
+    try {
+      const now = new Date();
+      const newHabit: Omit<Habit, 'id'> = {
+        title: title.trim(),
+        priority: priority ?? "low",
+        createdAt: toISO(now),
+        lastDoneAt: null,
+        streak: 0,
+        userId: user.uid,
+      };
+
+      const docRef = await addDoc(collection(db, "habits"), newHabit);
+      const habitWithId: Habit = { id: docRef.id, ...newHabit };
+
+      dispatch({ type: "ADD", payload: habitWithId });
+    } catch (error) {
+      console.error("Error adding habit:", error);
+      throw error;
+    }
+  }, [user]);
+
+  const toggleHabit = useCallback(async (id: string) => {
+    if (!user) return;
+
+    try {
+      const habit = state.habits.find(h => h.id === id);
+      if (!habit) return;
+
+      const today = new Date();
+      const todayISO = toISO(today);
+      const last = habit.lastDoneAt ? new Date(habit.lastDoneAt) : null;
+      const yaHechoHoy = last ? isSameDay(today, last) : false;
+
+      let newStreak = habit.streak;
+      let newLastDoneAt = habit.lastDoneAt;
+
+      // Si estaba marcado HOY → desmarcar: restar 1 (mín 0) y limpiar lastDoneAt
+      if (yaHechoHoy) {
+        newStreak = Math.max(0, habit.streak - 1);
+        newLastDoneAt = null;
+      } else {
+        // Si NO estaba marcado hoy → marcar
+        if (last && isYesterday(today, last)) {
+          newStreak = habit.streak + 1; // venías de ayer → cadena continúa
         } else {
-          dispatch({ type: "HYDRATE", payload: [] });
+          newStreak = 1; // reinicia (hoy es el primer día)
         }
-      } catch (e) {
-        console.warn("No se pudo cargar hábitos", e);
-        dispatch({ type: "HYDRATE", payload: [] });
+        newLastDoneAt = todayISO;
       }
-    })();
-  }, []);
 
-  // Guardar con pequeño debounce cuando cambie la lista (ya no loading)
-  const saveTimer = useRef<number | null>(null);
-  useEffect(() => {
-    if (state.loading) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.habits));
-      } catch (e) {
-        console.warn("No se pudo guardar hábitos", e);
-      }
-    }, 250);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [state.habits, state.loading]);
+      const updatedHabit: Habit = {
+        ...habit,
+        streak: newStreak,
+        lastDoneAt: newLastDoneAt,
+      };
 
-  const addHabit = useCallback((title: string, priority?: Priority) => {
-    const clean = title.trim();
-    if (!clean) return;
-    dispatch({ type: "ADD", title: clean, priority });
-  }, []);
+      await updateDoc(doc(db, "habits", id), {
+        streak: newStreak,
+        lastDoneAt: newLastDoneAt,
+      });
 
-  const toggleHabit = useCallback((id: string) => {
-    dispatch({ type: "TOGGLE", id, today: new Date() });
-  }, []);
+      dispatch({ type: "UPDATE", payload: updatedHabit });
+    } catch (error) {
+      console.error("Error toggling habit:", error);
+      throw error;
+    }
+  }, [user, state.habits]);
+
+  const deleteHabit = useCallback(async (id: string) => {
+    if (!user) return;
+
+    try {
+      await deleteDoc(doc(db, "habits", id));
+      dispatch({ type: "DELETE", payload: id });
+    } catch (error) {
+      console.error("Error deleting habit:", error);
+      throw error;
+    }
+  }, [user]);
 
   const value = useMemo<HabitsCtx>(
     () => ({
@@ -144,8 +186,9 @@ export function HabitsProvider({ children }: { children: React.ReactNode }) {
       habits: state.habits,
       addHabit,
       toggleHabit,
+      deleteHabit,
     }),
-    [state.loading, state.habits, addHabit, toggleHabit]
+    [state.loading, state.habits, addHabit, toggleHabit, deleteHabit]
   );
 
   return (
